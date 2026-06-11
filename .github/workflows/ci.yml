@@ -20,6 +20,11 @@ jobs:
             "PyJHora==4.6.0" "pyswisseph==2.10.3.2" "timezonefinder>=6.5" \
             numpy geocoder geopy pytz python-dateutil requests \
             pytest httpx
+      - name: Build atlas (cities500 for test speed)
+        # The fast source keeps the test job light; the india-coverage
+        # gate self-skips on it and enforces inside the image build,
+        # which always uses allCountries.
+        run: python -m app.atlas.build_atlas --source cities500
       - name: Golden gates
         run: python -m pytest tests -q
       - name: AGPL boundary check
@@ -42,12 +47,16 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/setup-buildx-action@v3
       - uses: docker/build-push-action@v6
         with:
           context: .
           push: true
           build-args: |
             GIT_SHA=${{ github.sha }}
+          # Layer cache keeps the 400MB GeoNames download warm between runs.
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
           tags: |
             ghcr.io/xgebox/rta-compute:latest
             ghcr.io/xgebox/rta-compute:${{ github.sha }}

@@ -23,8 +23,11 @@ RUN apt-get update \
 COPY app ./app
 COPY tests ./tests
 
-# Build the atlas at image build (GeoNames cities500, CC-BY 4.0).
+# Build the atlas at image build (GeoNames allCountries, P-class filtered,
+# CC-BY 4.0): every populated place on earth, so village-born clients
+# resolve by name. The 400MB download layer is cached across CI runs.
 RUN python -m app.atlas.build_atlas --data-dir /tmp/geonames \
+       --source allCountries \
     && rm -rf /tmp/geonames
 
 # The suite is the gate: an image that fails its golden tests must not ship.
