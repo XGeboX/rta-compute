@@ -150,3 +150,30 @@ def atlas(q: str, limit: int = 8):
     if not q or len(q) < 2:
         raise HTTPException(422, "query too short")
     return {"results": atlas_search.search(q, limit=min(limit, 20))}
+
+
+@router.get("/sky")
+def sky(t: str, ayanamsa: str = "TRUE_PUSHYA",
+        lat: float | None = None, lon: float | None = None):
+    """Live-sky frame for the Sky Atlas: grahas in equatorial-of-date,
+    tropical+sidereal readouts, arc boundaries. GET so the CDN can cache
+    by instant. No birth data, nothing persisted."""
+    from ..sky import positions as sky_positions
+    if ayanamsa not in C.AYANAMSAS:
+        raise HTTPException(422, f"unsupported ayanamsa: {ayanamsa}")
+    if (lat is None) != (lon is None):
+        raise HTTPException(422, "lat and lon arrive together or not at all")
+    if lat is not None and not (-90 <= lat <= 90 and -180 <= lon <= 180):
+        raise HTTPException(422, "lat/lon out of range")
+    try:
+        y, mo, d = int(t[0:4]), int(t[5:7]), int(t[8:10])
+        h, mi = int(t[11:13]), int(t[14:16])
+        s = int(t[17:19]) if len(t) >= 19 else 0
+    except (ValueError, IndexError) as exc:
+        raise HTTPException(422, "t must be ISO UTC: YYYY-MM-DDTHH:MM[:SS]") \
+            from exc
+    jd = C.jd_at((y, mo, d), (h, mi, s))
+    with C.frame(ayanamsa):
+        out = sky_positions.sky_at(jd, ayanamsa, lat=lat, lon=lon)
+    out["t"] = t
+    return out
