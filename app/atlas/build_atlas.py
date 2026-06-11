@@ -116,8 +116,12 @@ def built_source(db_path: Path = DB_PATH) -> str:
         row = con.execute(
             "SELECT value FROM meta WHERE key='source'").fetchone()
         return row[0] if row else ""
-    except sqlite3.OperationalError:
-        return ""
+    except sqlite3.OperationalError as exc:
+        # Only the legacy-db case (built before the meta table existed) is
+        # an expected miss; anything else (corruption, locks) must surface.
+        if "no such table" in str(exc):
+            return ""
+        raise
     finally:
         con.close()
 

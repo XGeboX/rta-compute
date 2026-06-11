@@ -53,7 +53,7 @@ def test_india_village_coverage():
 
 
 # Pinned from the 2026-06-12 allCountries build (5,207,731 places):
-# Zochachhuah, a Mizoram village of 333 people, absent from cities500 —
+# Zochachhuah, a Mizoram village of 333 people, absent from cities500;
 # exactly the class of birth place the deeper source exists to resolve.
 VILLAGE_NAME = "Zochachhuah"
 VILLAGE_LAT = 22.1325
