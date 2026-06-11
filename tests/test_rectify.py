@@ -111,6 +111,17 @@ def test_work_cap_enforced():
             R.rectify_sweep(JD, PLACE, 120, 120, events, step_min=0.5)
 
 
+def test_scan_call_cap_enforced():
+    import pytest
+    # Dense high-factor scan over the maximum window blows the sample cap.
+    with C.frame("TRUE_PUSHYA"):
+        with pytest.raises(ValueError, match="boundary scan too large"):
+            R.boundary_scan(JD, PLACE, 120, 120,
+                            factors=[60, 81, 108, 144])
+    # The default cascade at the maximum window stays within budget.
+    assert R._scan_call_estimate(120, 120, R.CASCADE) <= R.MAX_SCAN_CALLS
+
+
 def test_boundary_sequence_is_sign_continuous():
     """For each factor, consecutive boundaries must chain: the next flip's
     from_sign equals the previous flip's to_sign (no skipped intermediate

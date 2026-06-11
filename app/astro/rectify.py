@@ -58,6 +58,16 @@ def _varga_lagna(jd, place, factor):
     return int(raw[0][1][0])
 
 
+# A public endpoint must bound its own work: scan sampling calls.
+MAX_SCAN_CALLS = 4000
+
+
+def _scan_call_estimate(before_min, after_min, factors):
+    window = float(before_min) + float(after_min)
+    return sum(int(window / max(0.02, (120.0 / f) / 12.0)) + 1
+               for f in factors)
+
+
 def boundaries_in_window(jd_center, place, factor, before_min, after_min):
     """Every varga-lagna sign flip inside [t-before, t+after], bisected to
     about one second. The free boundary-scan teaser runs on this."""
@@ -105,6 +115,11 @@ def boundary_scan(jd_center, place, before_min, after_min,
                   factors=None):
     """The teaser: how decisive is this uncertainty window?"""
     factors = factors or CASCADE
+    est = _scan_call_estimate(before_min, after_min, factors)
+    if est > MAX_SCAN_CALLS:
+        raise ValueError(
+            f"boundary scan too large: ~{est} lagna samples exceeds the "
+            f"{MAX_SCAN_CALLS} cap; narrow the window or the factor list")
     table = []
     for f in factors:
         table.extend(boundaries_in_window(jd_center, place, f,

@@ -115,9 +115,13 @@ def rectify_boundaries(req: S.BoundaryScanRequest):
     """The free boundary scan: how decisive is the stated uncertainty
     window? No events required; nothing persisted."""
     jd, place = _jd_place(req.birth)
-    with C.frame(req.ayanamsa):
-        return {"frame": {"ayanamsa": req.ayanamsa},
-                **R.boundary_scan(jd, place, req.before_min, req.after_min)}
+    try:
+        with C.frame(req.ayanamsa):
+            return {"frame": {"ayanamsa": req.ayanamsa},
+                    **R.boundary_scan(jd, place, req.before_min,
+                                      req.after_min)}
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
 
 
 @router.post("/rectify")
