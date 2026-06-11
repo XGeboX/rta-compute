@@ -1,0 +1,19 @@
+[project]
+name = "rta-compute"
+version = "0.1.0"
+description = "The open computational core of rta.in: sidereal and tropical chart computation, pañcāṅga, Vimśottarī to five levels, classical gochara gates, birth-time sensitivity, and the deterministic Instant rule engine. Computed, not generated."
+license = "AGPL-3.0-or-later"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "PyJHora==4.6.0",
+    "pyswisseph==2.10.3.2",
+    "timezonefinder>=6.5",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "httpx>=0.27"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
