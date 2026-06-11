@@ -10,6 +10,7 @@ from datetime import date as _date
 from fastapi import APIRouter, HTTPException
 
 from .. import schemas as S
+from ..version import engine_version
 from ..astro import context as C
 from ..astro import dasha as D
 from ..astro import gochara as G
@@ -32,7 +33,7 @@ def _jd_place(birth: S.BirthInput):
 
 @router.get("/healthz")
 def healthz():
-    return {"ok": True, "engine": "rta-compute"}
+    return {"ok": True, "engine": "rta-compute", "version": engine_version()}
 
 
 @router.post("/chart")
@@ -107,6 +108,9 @@ def instant(req: S.InstantRequest):
         bundle = I.instant(jd, place, asof_jd, place)
         bundle["asof"] = str(asof)
         bundle["frame"] = {"ayanamsa": req.ayanamsa}
+        # Every Instant reading names the engine that produced it: any
+        # client can verify which image digest computed their result.
+        bundle["engine"] = engine_version()
         return bundle
 
 
