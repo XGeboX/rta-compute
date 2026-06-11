@@ -17,7 +17,7 @@ Produces app/atlas/atlas.db with an FTS5 table `places`:
     lat, lon, tz (IANA, via timezonefinder), population.
 plus a `meta` table recording the source and row count.
 
-GeoNames data is CC-BY 4.0 (https://www.geonames.org/) — attribution is
+GeoNames data is CC-BY 4.0 (https://www.geonames.org/); attribution is
 carried in the API docs and the platform's methodology page."""
 
 import argparse
