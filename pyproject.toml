@@ -10,6 +10,14 @@ dependencies = [
     "PyJHora==4.6.0",
     "pyswisseph==2.10.3.2",
     "timezonefinder>=6.5",
+    # PyJHora's wheel declares no dependencies; this is its real import
+    # surface for the module tree rta-compute uses (verified clean-room).
+    "numpy",
+    "geocoder",
+    "geopy",
+    "pytz",
+    "python-dateutil",
+    "requests",
 ]
 
 [project.optional-dependencies]

@@ -7,7 +7,8 @@ WORKDIR /srv
 COPY pyproject.toml LICENSE README.md ./
 RUN pip install --no-cache-dir \
     "fastapi>=0.115" "uvicorn[standard]>=0.30" \
-    "PyJHora==4.6.0" "pyswisseph==2.10.3.2" "timezonefinder>=6.5"
+    "PyJHora==4.6.0" "pyswisseph==2.10.3.2" "timezonefinder>=6.5" \
+    numpy geocoder geopy pytz python-dateutil requests
 
 COPY app ./app
 COPY tests ./tests
