@@ -60,6 +60,30 @@ class InstantRequest(BaseModel):
     asof: Optional[date] = None  # defaults handled by caller-supplied date; no server clock in compute path
 
 
+class RectifyEvent(BaseModel):
+    date: date
+    type: Literal["marriage", "relationship", "separation", "career",
+                  "children", "siblings", "mother", "father", "education",
+                  "injury", "relocation-abroad", "spiritual"]
+    label: str = Field(default="", max_length=120)
+
+
+class BoundaryScanRequest(BaseModel):
+    birth: BirthInput
+    ayanamsa: Ayanamsa = "TRUE_PUSHYA"
+    before_min: float = Field(default=20, gt=0, le=120)
+    after_min: float = Field(default=20, gt=0, le=120)
+
+
+class RectifyRequest(BaseModel):
+    birth: BirthInput
+    ayanamsa: Ayanamsa = "TRUE_PUSHYA"
+    before_min: float = Field(default=20, gt=0, le=120)
+    after_min: float = Field(default=20, gt=0, le=120)
+    step_min: float = Field(default=5, ge=0.5, le=15)
+    events: list[RectifyEvent] = Field(min_length=1, max_length=40)
+
+
 class FrameEcho(BaseModel):
     zodiac: Zodiac
     ayanamsa: Optional[Ayanamsa]
