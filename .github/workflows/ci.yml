@@ -1,0 +1,50 @@
+# This file is part of rta-compute. AGPL-3.0-or-later; see LICENSE.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: |
+          pip install "fastapi>=0.115" "uvicorn[standard]>=0.30" \
+            "PyJHora==4.6.0" "pyswisseph==2.10.3.2" "timezonefinder>=6.5" \
+            pytest httpx
+      - name: Golden gates
+        run: python -m pytest tests -q
+      - name: AGPL boundary check
+        # editorial prose must never enter this repo; templates live in the
+        # private platform. The marker below is what platform templates use.
+        run: |
+          ! grep -rn "INSTANT_TEMPLATE" app/ && echo "boundary clean"
+
+  docker:
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}:latest
+            ghcr.io/${{ github.repository }}:${{ github.sha }}
