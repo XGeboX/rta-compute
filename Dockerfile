@@ -1,7 +1,10 @@
 # This file is part of rta-compute. AGPL-3.0-or-later; see LICENSE.
 FROM python:3.12-slim AS base
 
-ENV PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1
+# The byte-identical contract is scoped per image digest; the build stamps
+# its commit so /healthz and every Instant response can name it.
+ARG GIT_SHA=dev
+ENV PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1 RTA_ENGINE_SHA=$GIT_SHA
 WORKDIR /srv
 
 COPY pyproject.toml LICENSE README.md ./
