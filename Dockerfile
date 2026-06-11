@@ -5,14 +5,15 @@ ENV PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1
 WORKDIR /srv
 
 COPY pyproject.toml LICENSE README.md ./
-# pyswisseph ships no slim-compatible wheel; build it, then drop the toolchain.
+# pyswisseph ships no slim-compatible wheel; it needs the full C/C++
+# toolchain (gcc AND g++) to build, dropped again after install.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends gcc libc6-dev \
+    && apt-get install -y --no-install-recommends build-essential \
     && pip install --no-cache-dir \
        "fastapi>=0.115" "uvicorn[standard]>=0.30" \
        "PyJHora==4.6.0" "pyswisseph==2.10.3.2" "timezonefinder>=6.5" \
        numpy geocoder geopy pytz python-dateutil requests \
-    && apt-get purge -y gcc libc6-dev \
+    && apt-get purge -y build-essential \
     && apt-get autoremove -y \
     && rm -rf /var/lib/apt/lists/*
 
