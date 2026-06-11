@@ -15,6 +15,7 @@ from ..astro import dasha as D
 from ..astro import gochara as G
 from ..astro import instant as I
 from ..astro import panchanga as P
+from ..astro import rectify as R
 from ..astro import vargas as V
 from ..atlas import search as atlas_search
 
@@ -107,6 +108,37 @@ def instant(req: S.InstantRequest):
         bundle["asof"] = str(asof)
         bundle["frame"] = {"ayanamsa": req.ayanamsa}
         return bundle
+
+
+@router.post("/rectify/boundaries")
+def rectify_boundaries(req: S.BoundaryScanRequest):
+    """The free boundary scan: how decisive is the stated uncertainty
+    window? No events required; nothing persisted."""
+    jd, place = _jd_place(req.birth)
+    try:
+        with C.frame(req.ayanamsa):
+            return {"frame": {"ayanamsa": req.ayanamsa},
+                    **R.boundary_scan(jd, place, req.before_min,
+                                      req.after_min)}
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+
+
+@router.post("/rectify")
+def rectify(req: S.RectifyRequest):
+    """Tier-1 computational rectification sweep: candidates, boundary map,
+    daśā-at-event lords, kāraka-lens score. Verdict stays human."""
+    jd, place = _jd_place(req.birth)
+    events = [{"date": (e.date.year, e.date.month, e.date.day),
+               "type": e.type, "label": e.label} for e in req.events]
+    try:
+        with C.frame(req.ayanamsa):
+            return {"frame": {"ayanamsa": req.ayanamsa},
+                    **R.rectify_sweep(jd, place, req.before_min,
+                                      req.after_min, events,
+                                      step_min=req.step_min)}
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
 
 
 @router.get("/atlas")
