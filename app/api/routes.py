@@ -127,10 +127,14 @@ def rectify(req: S.RectifyRequest):
     jd, place = _jd_place(req.birth)
     events = [{"date": (e.date.year, e.date.month, e.date.day),
                "type": e.type, "label": e.label} for e in req.events]
-    with C.frame(req.ayanamsa):
-        return {"frame": {"ayanamsa": req.ayanamsa},
-                **R.rectify_sweep(jd, place, req.before_min, req.after_min,
-                                  events, step_min=req.step_min)}
+    try:
+        with C.frame(req.ayanamsa):
+            return {"frame": {"ayanamsa": req.ayanamsa},
+                    **R.rectify_sweep(jd, place, req.before_min,
+                                      req.after_min, events,
+                                      step_min=req.step_min)}
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
 
 
 @router.get("/atlas")

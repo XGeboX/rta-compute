@@ -84,3 +84,39 @@ def test_sweep_deterministic():
     with C.frame("TRUE_PUSHYA"):
         b = R.rectify_sweep(JD, PLACE, 10, 10, EVENTS, step_min=5)
     assert a == b
+
+
+def test_event_types_sync_with_schema():
+    """The schema Literal and the kāraka table must never drift apart."""
+    from typing import get_args
+    from app.schemas import RectifyEvent
+    literal = set(get_args(RectifyEvent.model_fields["type"].annotation))
+    assert literal == set(R.EVENT_KARAKAS.keys())
+
+
+def test_unknown_event_type_fails_loudly():
+    import pytest
+    with C.frame("TRUE_PUSHYA"):
+        with pytest.raises(ValueError, match="unknown event type"):
+            R.rectify_sweep(JD, PLACE, 5, 5,
+                            [{"date": (2020, 1, 1), "type": "lost-love"}],
+                            step_min=5)
+
+
+def test_work_cap_enforced():
+    import pytest
+    events = [{"date": (2020, 1, 1), "type": "career"}] * 40
+    with C.frame("TRUE_PUSHYA"):
+        with pytest.raises(ValueError, match="work cap"):
+            R.rectify_sweep(JD, PLACE, 120, 120, events, step_min=0.5)
+
+
+def test_boundary_sequence_is_sign_continuous():
+    """For each factor, consecutive boundaries must chain: the next flip's
+    from_sign equals the previous flip's to_sign (no skipped intermediate
+    signs, even at this 53°N latitude where ascension compresses)."""
+    with C.frame("TRUE_PUSHYA"):
+        for f in (9, 24, 60):
+            flips = R.boundaries_in_window(JD, PLACE, f, 40, 40)
+            for a, b in zip(flips, flips[1:]):
+                assert a["to_sign"] == b["from_sign"], (f, a, b)

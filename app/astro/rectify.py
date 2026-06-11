@@ -62,9 +62,13 @@ def boundaries_in_window(jd_center, place, factor, before_min, after_min):
     """Every varga-lagna sign flip inside [t-before, t+after], bisected to
     about one second. The free boundary-scan teaser runs on this."""
     day = 1.0 / 1440.0
-    # The D-N lagna flips roughly every 120/N minutes; sample at a third of
-    # that so no flip is stepped over.
-    step = max(0.05, (120.0 / factor) / 3.0)
+    # The D-N lagna flips on average every 120/N minutes, but ascendant
+    # speed varies strongly with latitude and rising sign (short-ascension
+    # signs at high latitudes rise several times faster than the mean), so
+    # sample with a generous safety factor; and after each found flip,
+    # resume the scan FROM the flip moment so multiple flips inside one
+    # original step interval are never skipped.
+    step = max(0.02, (120.0 / factor) / 12.0)
     flips = []
     t = -float(before_min)
     end = float(after_min)
@@ -87,6 +91,11 @@ def boundaries_in_window(jd_center, place, factor, before_min, after_min):
                 "from_sign": C.RASI_IAST[prev_sign],
                 "to_sign": C.RASI_IAST[flip_sign],
             })
+            # resume just past the flip; the remainder of this step may
+            # hold another boundary.
+            t = hi
+            prev_sign = flip_sign
+            continue
         prev_sign = sign
         t = t_next
     return flips
@@ -113,11 +122,31 @@ def boundary_scan(jd_center, place, before_min, after_min,
     }
 
 
-def _dasha_lords_at(jd_birth, place, event_jd):
-    stack = D.stack_at(jd_birth, place, event_jd, depth=2)
-    md = stack[0]["lord"] if stack else None
-    ad = stack[1]["lord"] if len(stack) > 1 else None
-    return md, ad
+class _CandidateDasha:
+    """One candidate birth time's daśā tree, computed once and queried for
+    every event: the native L1 list is built a single time and L2 bhukti
+    lists are memoized per mahā lord, so an N-event request costs one L1
+    computation plus at most a handful of L2 expansions per candidate
+    (instead of N full stack recomputations under the frame lock)."""
+
+    def __init__(self, jd_birth, place):
+        self._l1 = D._native_l1(jd_birth, place)
+        self._l2_cache = {}
+
+    def lords_at(self, event_jd):
+        for lord, s, e in self._l1:
+            if s <= event_jd < e:
+                if lord not in self._l2_cache:
+                    self._l2_cache[lord] = D._native_l2(lord, s, e)
+                for alord, as_, ae in self._l2_cache[lord]:
+                    if as_ <= event_jd < ae:
+                        return C.GRAHA_IAST[lord], C.GRAHA_IAST[alord]
+                return C.GRAHA_IAST[lord], None
+        return None, None
+
+
+# A public endpoint must bound its own work: candidates × events.
+MAX_SWEEP_WORK = 2000
 
 
 def rectify_sweep(jd_center, place, before_min, after_min, events,
@@ -129,18 +158,28 @@ def rectify_sweep(jd_center, place, before_min, after_min, events,
     lords, and the kāraka-lens score with citations. Plus the boundary
     table. Deterministic; no verdict."""
     factors = factors or CASCADE
+    n_candidates = int((before_min + after_min) / step_min) + 1
+    if n_candidates * max(1, len(events)) > MAX_SWEEP_WORK:
+        raise ValueError(
+            f"sweep too large: {n_candidates} candidates x {len(events)} "
+            f"events exceeds the {MAX_SWEEP_WORK} work cap; widen step_min "
+            f"or narrow the window")
+    for ev in events:
+        if ev["type"] not in EVENT_KARAKAS:
+            raise ValueError(f"unknown event type: {ev['type']!r}")
     day = 1.0 / 1440.0
     candidates = []
     t = -float(before_min)
     while t <= float(after_min) + 1e-9:
         cjd = jd_center + t * day
         lagnas = {f: C.RASI_IAST[_varga_lagna(cjd, place, f)] for f in factors}
+        tree = _CandidateDasha(cjd, place)
         per_event = []
         score = 0
         for ev in events:
             ejd = C.jd_at(tuple(ev["date"]), (12, 0, 0))
-            md, ad = _dasha_lords_at(cjd, place, ejd)
-            karakas = EVENT_KARAKAS.get(ev["type"], [])
+            md, ad = tree.lords_at(ejd)
+            karakas = EVENT_KARAKAS[ev["type"]]
             md_hit = md in karakas
             ad_hit = ad in karakas
             score += (2 if md_hit else 0) + (1 if ad_hit else 0)
@@ -162,7 +201,7 @@ def rectify_sweep(jd_center, place, before_min, after_min, events,
     scan = boundary_scan(jd_center, place, before_min, after_min, factors)
     return {
         "doctrine": ("computed-not-generated; the kāraka score is one "
-                     "classical lens, not a verdict — final rectification "
+                     "classical lens, not a verdict - final rectification "
                      "is a human judgment over these facts"),
         "method": "PVR multi-varga rectification (sweep + boundary map + "
                   "daśā-at-event, cascade D1-D9-D3-D10-D12-D24)",
