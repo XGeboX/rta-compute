@@ -5,8 +5,8 @@
 The reproducibility guarantee is scoped per image digest: identical input
 to the same image produces identical output. This module echoes the build
 identity (RTA_ENGINE_SHA, baked at image build) and the ACTUAL installed
-versions of the two computation dependencies — read from package metadata
-at import, never hand-claimed, so the echo cannot drift from reality.
+versions of the two computation dependencies, read from package metadata
+at import and never hand-claimed, so the echo cannot drift from reality.
 """
 
 import os
@@ -18,10 +18,15 @@ CONTRACT = "byte-identical per image digest"
 
 
 def _installed(package: str) -> str:
+    """A computation dependency whose version cannot be read is a broken
+    contract, not a degraded one: fail at import, loudly, so the image
+    build (which runs this suite) can never ship such a state."""
     try:
         return metadata.version(package)
-    except metadata.PackageNotFoundError:  # pragma: no cover
-        return "absent"
+    except metadata.PackageNotFoundError as exc:
+        raise RuntimeError(
+            f"{package} is not visible to importlib.metadata; the "
+            f"byte-identical contract cannot be stated without it") from exc
 
 
 PINS = {

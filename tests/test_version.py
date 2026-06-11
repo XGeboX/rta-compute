@@ -19,7 +19,9 @@ client = TestClient(app)
 
 
 def test_healthz_carries_version_block():
-    body = client.get("/v1/healthz").json()
+    res = client.get("/v1/healthz")
+    assert res.status_code == 200
+    body = res.json()
     assert body["ok"] is True
     v = body["version"]
     assert v["contract"] == "byte-identical per image digest"
@@ -30,14 +32,20 @@ def test_healthz_carries_version_block():
 
 
 def test_instant_response_names_its_engine():
-    body = client.post("/v1/instant", json={
+    res = client.post("/v1/instant", json={
         "birth": {"date": "2025-02-28", "time": "17:55:55",
                   "lat": 53.7938, "lon": -1.7564, "tz_hours": 0.0,
                   "place_name": "Bradford"},
         "asof": "2025-03-01",
-    }).json()
-    assert body["engine"] == engine_version()
-    assert body["engine"]["contract"] == "byte-identical per image digest"
+    })
+    assert res.status_code == 200
+    engine = res.json()["engine"]
+    # Assert against metadata directly, not engine_version(), so a shared
+    # bug in the helper cannot vouch for itself.
+    assert engine["pyjhora"] == metadata.version("PyJHora")
+    assert engine["pyswisseph"] == metadata.version("pyswisseph")
+    assert engine["sha"] == engine_version()["sha"]
+    assert engine["contract"] == "byte-identical per image digest"
 
 
 def test_agpl_source_header_present():
