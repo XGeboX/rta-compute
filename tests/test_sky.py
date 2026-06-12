@@ -157,3 +157,20 @@ def test_sky_frame_payload_sane():
     for g, rec in sky["grahas"].items():
         assert -35 < rec["dec_deg"] < 35, g
         assert rec["nakshatra"]
+
+
+def test_sky_route_rejects_timezone_strings():
+    """A '+05:30' suffix silently read as UTC would be hours of error;
+    only bare ISO or trailing-Z may pass."""
+    from fastapi.testclient import TestClient
+    from app.main import app
+    client = TestClient(app)
+    ok = client.get("/v1/sky", params={"t": "2025-02-28T17:55:55"})
+    assert ok.status_code == 200
+    okz = client.get("/v1/sky", params={"t": "2025-02-28T17:55:55Z"})
+    assert okz.status_code == 200
+    assert okz.json()["grahas"] == ok.json()["grahas"]
+    for bad in ["2025-02-28T17:55:55+05:30", "2025-02-28T17:55:55.123",
+                "2025-02-28 17:55:55", "2025-02-28"]:
+        res = client.get("/v1/sky", params={"t": bad})
+        assert res.status_code == 422, bad
