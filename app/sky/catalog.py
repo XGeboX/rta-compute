@@ -55,6 +55,13 @@ def load_athyg(csv_gz: Path, mag_limit: float = MAG_LIMIT,
                 mag = float(row["mag"])
             except (ValueError, KeyError):
                 continue
+            # Nothing real outshines Sirius (-1.44): any other sub--2
+            # row is a data artifact and must stop the build, not slip
+            # into the sky as a phantom beacon.
+            if mag < -2.0:
+                raise ValueError(
+                    f"non-stellar magnitude {mag} for row "
+                    f"{row.get('proper') or row.get('hip') or '?'}")
             hip = int(float(row["hip"])) if row.get("hip") else 0
             if mag > mag_limit and hip not in force_hips:
                 continue
