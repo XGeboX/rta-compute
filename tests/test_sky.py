@@ -56,6 +56,9 @@ def test_star_record_roundtrip_and_order(dist):
     assert len(rows) == m["counts"]["stars"]
     mags = [r["mag"] for r in rows]
     assert mags == sorted(mags), "buffer must be magnitude-ascending"
+    # the Sun is a graha, not a record: nothing brighter than Sirius may
+    # exist in the pack, and record 0 must be a real named star
+    assert mags[0] > -2.0, "Sol leaked into the star pack"
     for r in rows[:200]:
         n = math.sqrt(r["x"]**2 + r["y"]**2 + r["z"]**2)
         assert abs(n - 1.0) < 1e-5, "unit vectors expected"

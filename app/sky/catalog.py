@@ -46,6 +46,11 @@ def load_athyg(csv_gz: Path, mag_limit: float = MAG_LIMIT,
     dt = EPOCH_YEAR - 2000.0
     with gzip.open(csv_gz, "rt", encoding="utf-8") as fh:
         for row in csv.DictReader(fh):
+            # ATHYG carries the Sun as its first row (proper "Sol",
+            # mag -26.7, no HIP). It is a graha, not a fixed star: the
+            # renderer places it from the live engine, never the pack.
+            if (row.get("proper") or "").strip() == "Sol":
+                continue
             try:
                 mag = float(row["mag"])
             except (ValueError, KeyError):
