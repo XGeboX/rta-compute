@@ -150,3 +150,38 @@ def atlas(q: str, limit: int = 8):
     if not q or len(q) < 2:
         raise HTTPException(422, "query too short")
     return {"results": atlas_search.search(q, limit=min(limit, 20))}
+
+
+@router.get("/sky")
+def sky(t: str, ayanamsa: str = "TRUE_PUSHYA",
+        lat: float | None = None, lon: float | None = None):
+    """Live-sky frame for the Sky Atlas: grahas in equatorial-of-date,
+    tropical+sidereal readouts, arc boundaries. GET so the CDN can cache
+    by instant. No birth data, nothing persisted."""
+    from ..sky import positions as sky_positions
+    if ayanamsa not in C.AYANAMSAS:
+        raise HTTPException(422, f"unsupported ayanamsa: {ayanamsa}")
+    if (lat is None) != (lon is None):
+        raise HTTPException(422, "lat and lon arrive together or not at all")
+    if lat is not None and not (-90 <= lat <= 90 and -180 <= lon <= 180):
+        raise HTTPException(422, "lat/lon out of range")
+    # Strict UTC only: a "+05:30" suffix silently treated as UTC would
+    # compute a sky hours off. Trailing 'Z' is the one accepted marker.
+    body_t = t[:-1] if t.endswith("Z") else t
+    if len(body_t) not in (16, 19):
+        raise HTTPException(
+            422, "t must be ISO UTC: YYYY-MM-DDTHH:MM[:SS][Z]")
+    try:
+        y, mo, d = int(body_t[0:4]), int(body_t[5:7]), int(body_t[8:10])
+        if body_t[4] != "-" or body_t[7] != "-" or body_t[10] != "T":
+            raise ValueError("separators")
+        h, mi = int(body_t[11:13]), int(body_t[14:16])
+        s = int(body_t[17:19]) if len(body_t) == 19 else 0
+    except (ValueError, IndexError) as exc:
+        raise HTTPException(422, "t must be ISO UTC: YYYY-MM-DDTHH:MM[:SS][Z]") \
+            from exc
+    jd = C.jd_at((y, mo, d), (h, mi, s))
+    with C.frame(ayanamsa):
+        out = sky_positions.sky_at(jd, ayanamsa, lat=lat, lon=lon)
+    out["t"] = t
+    return out
