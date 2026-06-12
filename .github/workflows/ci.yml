@@ -25,6 +25,8 @@ jobs:
         # gate self-skips on it and enforces inside the image build,
         # which always uses allCountries.
         run: python -m app.atlas.build_atlas --source cities500
+      - name: Fetch sky datasets (~15MB; licenses in data/sky/DATA-LICENSES.md)
+        run: bash scripts/fetch_sky_data.sh
       - name: Golden gates
         run: python -m pytest tests -q
       - name: AGPL boundary check
