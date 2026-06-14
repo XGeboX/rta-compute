@@ -1,6 +1,6 @@
 # rta-compute
 
-The open computational core of [rta.in](https://rta.in).
+The open computational core of [rtarhythm.com](https://rtarhythm.com).
 
 **Computed, not generated.** Every number this service returns is a
 deterministic computation against the Swiss Ephemeris under classical
@@ -61,7 +61,7 @@ Jagannatha Hora computation to the arcsecond on the lagna.
 
 ## What this repository is not
 
-The rta.in platform (site, accounts, orders, editorial prose of the
+The rtarhythm.com platform (site, accounts, orders, editorial prose of the
 Instant readings, and the human practice behind RTA RHYTHM) is a separate
 proprietary work that communicates with this service over HTTP. The math
 is open; the craft is human.

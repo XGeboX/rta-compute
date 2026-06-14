@@ -10,7 +10,7 @@
 # WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero
 # General Public License for more details: LICENSE.
-"""rta-compute: the open computational core of rta.in.
+"""rta-compute: the open computational core of rtarhythm.com.
 
 Computed, not generated. Sidereal and tropical chart computation, pañcāṅga,
 five-level Vimśottarī, classical gochara gates, birth-time sensitivity, and
@@ -32,14 +32,14 @@ SOURCE_URL = os.environ.get(
 
 app = FastAPI(
     title="rta-compute",
-    summary="The open computational core of rta.in — computed, not generated.",
+    summary="The open computational core of rtarhythm.com — computed, not generated.",
     version="0.1.0",
     license_info={"name": "AGPL-3.0-or-later",
                   "url": "https://www.gnu.org/licenses/agpl-3.0.html"},
 )
 
 _origins = [o.strip() for o in os.environ.get(
-    "RTA_CORS_ORIGINS", "https://rta.in,https://www.rta.in,http://localhost:3000"
+    "RTA_CORS_ORIGINS", "https://rtarhythm.com,https://www.rtarhythm.com,http://localhost:3000"
 ).split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
