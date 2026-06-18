@@ -1,6 +1,6 @@
 # Contributing to rta-compute
 
-This is the open computational core of [rta.in](https://rta.in): the
+This is the open computational core of [rtarhythm.com](https://rtarhythm.com): the
 math, the pipelines, and the citations behind a jyotiṣa practice that
 holds śāstra and software accountable to each other. The project's
 standards are unusual, and they are the point. Read them before you open

@@ -1,7 +1,7 @@
 [project]
 name = "rta-compute"
 version = "0.1.0"
-description = "The open computational core of rta.in: sidereal and tropical chart computation, pañcāṅga, Vimśottarī to five levels, classical gochara gates, birth-time sensitivity, and the deterministic Instant rule engine. Computed, not generated."
+description = "The open computational core of rtarhythm.com: sidereal and tropical chart computation, pañcāṅga, Vimśottarī to five levels, classical gochara gates, birth-time sensitivity, and the deterministic Instant rule engine. Computed, not generated."
 license = "AGPL-3.0-or-later"
 requires-python = ">=3.12"
 dependencies = [
