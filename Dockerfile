@@ -15,7 +15,7 @@ RUN apt-get update \
     && pip install --no-cache-dir \
        "fastapi>=0.115" "uvicorn[standard]>=0.30" \
        "PyJHora==4.6.0" "pyswisseph==2.10.3.2" "timezonefinder>=6.5" \
-       numpy geocoder geopy pytz python-dateutil requests \
+       "numpy==2.4.2" geocoder geopy pytz python-dateutil requests \
     && apt-get purge -y build-essential \
     && apt-get autoremove -y \
     && rm -rf /var/lib/apt/lists/*
@@ -33,7 +33,16 @@ RUN python -m app.atlas.build_atlas --data-dir /tmp/geonames \
 # The suite is the gate: an image that fails its golden tests must not ship.
 RUN pip install --no-cache-dir pytest httpx && python -m pytest tests -q
 
+# Non-root at runtime. Atlas and any fetched data are baked at build time
+# above, while running as root; chown once, then drop privilege for good.
+RUN useradd --no-create-home --shell /usr/sbin/nologin app \
+    && chown -R app:app /srv
+USER app
+
 EXPOSE 8500
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD python -c "import sys, urllib.request as u; \
+sys.exit(0 if u.urlopen('http://127.0.0.1:8500/v1/healthz', timeout=3).status == 200 else 1)"
 # Multiple worker PROCESSES (never threads) — PyJhora global state is
 # serialized per process by the frame lock.
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8500", "--workers", "4"]

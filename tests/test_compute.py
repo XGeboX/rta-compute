@@ -150,3 +150,44 @@ def test_tara_rank_formula():
     assert C.tara_rank(4, 13) == 1    # +9
     assert C.tara_rank(4, 5) == 2     # sampat
     assert C.tara_rank(4, 3) == 9     # parama-mitra (one behind)
+
+
+def test_ayanamsa_kp_and_raman_gates():
+    """The schema offers four ayanamsas but only TRUE_PUSHYA and LAHIRI were
+    ever exercised. KP and RAMAN must compute cleanly, diverge from True
+    Pushya by a plausible ayanamsa delta (not degrees off, not zero), and
+    the route's frame block must echo back exactly what was requested."""
+    from fastapi.testclient import TestClient
+    from app.main import app
+    client = TestClient(app)
+    with C.frame("TRUE_PUSHYA"):
+        tp_lagna = C.positions_at(JD, PLACE)["lagna"]["longitude"]
+    body = {"birth": {"date": "2025-02-28", "time": "17:55:55",
+                      "lat": 53.7938, "lon": -1.7564, "tz_hours": 0.0,
+                      "place_name": "Bradford"}}
+    for ayanamsa in ("KP", "RAMAN"):
+        res = client.post("/v1/chart",
+                          json={**body, "options": {"ayanamsa": ayanamsa}})
+        assert res.status_code == 200, ayanamsa
+        payload = res.json()
+        assert payload["frame"]["ayanamsa"] == ayanamsa
+        lagna_lon = payload["positions"]["lagna"]["longitude"]
+        delta = abs(((lagna_lon - tp_lagna) + 180) % 360 - 180)
+        assert 0 < delta < 2, (ayanamsa, delta)
+
+
+def test_asof_bounds_rejected_outside_ephemeris_window():
+    """/v1/dasha and /v1/instant both bound `asof` to the ephemeris
+    accuracy window; outside it is a 422, not a silently degraded compute."""
+    from fastapi.testclient import TestClient
+    from app.main import app
+    client = TestClient(app)
+    body = {"birth": {"date": "2025-02-28", "time": "17:55:55",
+                      "lat": 53.7938, "lon": -1.7564, "tz_hours": 0.0,
+                      "place_name": "Bradford"}}
+    for path in ("/v1/dasha", "/v1/instant"):
+        for bad_asof in ("1799-12-31", "2201-01-01"):
+            res = client.post(path, json={**body, "asof": bad_asof})
+            assert res.status_code == 422, (path, bad_asof)
+        ok = client.post(path, json={**body, "asof": "2026-06-11"})
+        assert ok.status_code == 200, path

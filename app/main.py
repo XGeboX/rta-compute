@@ -32,7 +32,7 @@ SOURCE_URL = os.environ.get(
 
 app = FastAPI(
     title="rta-compute",
-    summary="The open computational core of rtarhythm.com — computed, not generated.",
+    summary="The open computational core of rtarhythm.com, computed, not generated.",
     version="0.1.0",
     license_info={"name": "AGPL-3.0-or-later",
                   "url": "https://www.gnu.org/licenses/agpl-3.0.html"},
