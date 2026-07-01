@@ -39,10 +39,17 @@ running source.
 ```bash
 python -m venv .venv && . .venv/bin/activate
 pip install -e ".[dev]"
-python -m app.atlas.build_atlas        # GeoNames download, ~10 MB
+python -m app.atlas.build_atlas --source cities500   # ~10 MB quick start
+# (omit --source for the full allCountries build, ~400 MB -- what CI and
+# the Docker image ship)
+bash scripts/fetch_sky_data.sh         # Sky Atlas raw data, ~15 MB
 pytest -q                              # golden gates
 uvicorn app.main:app --port 8500
 ```
+
+Without the atlas build, `tests/test_atlas.py` self-skips; without the Sky
+Atlas fetch, `tests/test_sky.py` self-skips. Run both steps above to see
+the full suite pass instead of silently skipping those two files.
 
 The golden test fixtures are the founding chart of RTA itself
 (28 February 2025, Bradford), cross-validated against an independent
