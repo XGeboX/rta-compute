@@ -14,7 +14,7 @@
 
 Computed, not generated. Sidereal and tropical chart computation, pañcāṅga,
 five-level Vimśottarī, classical gochara gates, birth-time sensitivity, and
-the deterministic Instant rule engine — all auditable against this source.
+the deterministic Instant rule engine, all auditable against this source.
 
 Privacy: this service is stateless. Birth data exists only inside a request
 and its computation; nothing is persisted, request bodies are never logged.
