@@ -3,6 +3,7 @@
 """Pañcāṅga at a moment: tithi, nakṣatra, yoga, karaṇa, vāra, with sunrise
 and sunset. Computed via PyJhora's drik layer in the pinned frame."""
 
+import datetime
 import io
 import sys
 
@@ -11,6 +12,7 @@ from . import context as C
 _orig_stdout = sys.stdout
 sys.stdout = io.StringIO()
 try:
+    from jhora import utils as jutils
     from jhora.panchanga import drik
 finally:
     sys.stdout = _orig_stdout
@@ -47,13 +49,30 @@ def _first_int(x):
     return int(x)
 
 
+def vaara_at(jd, place):
+    """Sunrise-anchored vāra, Sunday==1 .. Saturday==7 -- the classical vāra
+    runs sunrise to sunrise, so before local sunrise the previous day's vāra
+    persists (matches the Dṛṣṭi reference engine).
+
+    drik.vaara(jd) is deliberately NOT used: it is 0-based (Sunday==0) and,
+    taking no place, flips at the JD integer boundary -- local noon in this
+    codebase's wall-clock JD frame. The two defects cancelled in evening spot
+    checks (0-based value + post-noon shift looked 1-based) while every
+    pre-noon query silently reported the previous vāra."""
+    y, m, d, _fh = jutils.jd_to_gregorian(jd)
+    v = (datetime.date(y, m, d).weekday() + 1) % 7 + 1   # Mon=0..Sun=6 -> Sun=1..Sat=7
+    if jd < drik.sunrise(jd, place)[2]:                  # [2] == sunrise jd, same frame
+        v = (v - 2) % 7 + 1
+    return v
+
+
 def panchanga_at(jd, place):
     """The five limbs + sun events at jd/place (frame pinned by caller)."""
     t = drik.tithi(jd, place)
     n = drik.nakshatra(jd, place)
     y = drik.yogam(jd, place)
     k = drik.karana(jd, place)
-    v = drik.vaara(jd)
+    v = vaara_at(jd, place)
 
     t_no = _first_int(t)
     n_no = _first_int(n)
@@ -81,7 +100,7 @@ def panchanga_at(jd, place):
                       "pada": pada},
         "yoga": {"number": y_no, "name": YOGA_IAST[(y_no - 1) % 27]},
         "karana": {"number": k_no, "name": karana_name(k_no)},
-        # drik.vaara: Sunday==1 (verified: 2026-06-03 Wednesday -> 4)
+        # vaara_at: sunrise-anchored, Sunday==1 (gates in tests/test_vara.py)
         "vara": {"number": v_no, "name": VARA_IAST[(v_no - 1) % 7]},
         "sunrise": str(sunrise),
         "sunset": str(sunset),
