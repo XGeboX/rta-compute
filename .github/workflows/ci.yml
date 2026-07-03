@@ -15,11 +15,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install
-        run: |
-          pip install "fastapi>=0.115" "uvicorn[standard]>=0.30" \
-            "PyJHora==4.6.0" "pyswisseph==2.10.3.2" "timezonefinder>=6.5" \
-            numpy geocoder geopy pytz python-dateutil requests \
-            pytest httpx
+        run: pip install -e ".[dev]"
       - name: Build atlas (cities500 for test speed)
         # The fast source keeps the test job light; the india-coverage
         # gate self-skips on it and enforces inside the image build,
