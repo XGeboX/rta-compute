@@ -24,4 +24,4 @@ def test_tropical_default_whole_sign_returns_houses():
     assert r.status_code == 200, r.text
     body = r.json()
     assert body["houses"] is not None
-    assert len(body["houses"]) == 12
+    assert len(body["houses"]["cusps"]) == 12
