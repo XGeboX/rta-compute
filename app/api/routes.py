@@ -49,7 +49,9 @@ def chart(req: S.ChartRequest):
             houses = None
             if req.options.house_system == "placidus":
                 houses = C.tropical_houses(jd, place, hsys=b"P")
-            elif req.options.house_system in ("equal", "whole-sign"):
+            elif req.options.house_system == "whole-sign":
+                houses = C.tropical_houses(jd, place, hsys=b"W")
+            elif req.options.house_system == "equal":
                 houses = C.tropical_houses(jd, place, hsys=b"E")
             return {"frame": {"zodiac": "tropical", "ayanamsa": None,
                               "ayanamsa_value_subtracted": round(ay, 6)},
