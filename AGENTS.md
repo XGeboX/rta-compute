@@ -59,8 +59,6 @@ CI (`.github/workflows/ci.yml`) on push/PR to `main`: install deps directly (not
 build atlas (`cities500`), fetch sky data, run `pytest tests -q`, AGPL boundary grep. On `main`
 push only: Docker build + push to `ghcr.io/xgebox/rta-compute:latest` and `:<sha>`.
 
-Receipts for meaningful work: `python3 /Users/ani/Thorn/scripts/gebo/receipts/receipt.py`.
-
 ## Cross-repo notes
 
 - Canonical open compute core. `rta-platform` (private Next.js) is the proprietary consumer --
