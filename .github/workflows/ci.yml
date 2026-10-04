@@ -29,7 +29,21 @@ jobs:
         # editorial prose must never enter this repo; templates live in the
         # private platform. The marker below is what platform templates use.
         run: |
-          ! grep -rn "INSTANT_TEMPLATE" app/ && echo "boundary clean"
+          grep_status=0
+          grep -rn "INSTANT_TEMPLATE" app/ || grep_status=$?
+          case "$grep_status" in
+            0)
+              echo "boundary marker found" >&2
+              exit 1
+              ;;
+            1)
+              echo "boundary clean"
+              ;;
+            *)
+              echo "boundary scan failed (grep status $grep_status)" >&2
+              exit "$grep_status"
+              ;;
+          esac
 
   docker:
     runs-on: ubuntu-latest
