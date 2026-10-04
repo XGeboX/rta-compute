@@ -12,7 +12,8 @@ dependencies = [
     "timezonefinder>=6.5",
     # PyJHora's wheel declares no dependencies; this is its real import
     # surface for the module tree rta-compute uses (verified clean-room).
-    "numpy",
+    # Pinned exactly per VERSIONING.md: numpy is computation-critical.
+    "numpy==2.4.2",
     "geocoder",
     "geopy",
     "pytz",

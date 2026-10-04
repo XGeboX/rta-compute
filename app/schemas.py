@@ -12,6 +12,11 @@ Ayanamsa = Literal["TRUE_PUSHYA", "LAHIRI", "RAMAN", "KP"]
 Zodiac = Literal["sidereal", "tropical"]
 HouseSystem = Literal["placidus", "whole-sign", "equal"]
 
+# Swiss Ephemeris accuracy window this service relies on; an `asof` outside
+# it is rejected rather than silently computed against degraded ephemeris.
+ASOF_MIN = date(1800, 1, 1)
+ASOF_MAX = date(2200, 12, 31)
+
 
 class BirthInput(BaseModel):
     date: date
@@ -44,7 +49,7 @@ class PanchangaRequest(BaseModel):
 class DashaRequest(BaseModel):
     birth: BirthInput
     ayanamsa: Ayanamsa = "TRUE_PUSHYA"
-    asof: Optional[date] = None
+    asof: Optional[date] = Field(default=None, ge=ASOF_MIN, le=ASOF_MAX)
     depth: int = Field(default=5, ge=1, le=5)
 
 
@@ -57,7 +62,8 @@ class SensitivityRequest(BaseModel):
 class InstantRequest(BaseModel):
     birth: BirthInput
     ayanamsa: Ayanamsa = "TRUE_PUSHYA"
-    asof: Optional[date] = None  # defaults handled by caller-supplied date; no server clock in compute path
+    # defaults handled by caller-supplied date; no server clock in compute path
+    asof: Optional[date] = Field(default=None, ge=ASOF_MIN, le=ASOF_MAX)
 
 
 class RectifyEvent(BaseModel):
@@ -82,10 +88,3 @@ class RectifyRequest(BaseModel):
     after_min: float = Field(default=20, gt=0, le=120)
     step_min: float = Field(default=5, ge=0.5, le=15)
     events: list[RectifyEvent] = Field(min_length=1, max_length=40)
-
-
-class FrameEcho(BaseModel):
-    zodiac: Zodiac
-    ayanamsa: Optional[Ayanamsa]
-    ayanamsa_value: Optional[float]
-    engine: str = "rta-compute (PyJhora 4.6.0 / Swiss Ephemeris)"
