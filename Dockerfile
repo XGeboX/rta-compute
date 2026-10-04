@@ -31,7 +31,8 @@ RUN python -m app.atlas.build_atlas --data-dir /tmp/geonames \
     && rm -rf /tmp/geonames
 
 # The suite is the gate: an image that fails its golden tests must not ship.
-RUN pip install --no-cache-dir pytest httpx && python -m pytest tests -q
+# The workflow test needs .github files that the image does not ship.
+RUN pip install --no-cache-dir pytest httpx && python -m pytest tests -q --ignore=tests/test_ci_gate.py
 
 # Non-root at runtime. The atlas and data baked above stay root-owned and
 # world-readable; the service only reads them (the atlas opens mode=ro). A
