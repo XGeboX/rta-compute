@@ -33,10 +33,10 @@ RUN python -m app.atlas.build_atlas --data-dir /tmp/geonames \
 # The suite is the gate: an image that fails its golden tests must not ship.
 RUN pip install --no-cache-dir pytest httpx && python -m pytest tests -q
 
-# Non-root at runtime. Atlas and any fetched data are baked at build time
-# above, while running as root; chown once, then drop privilege for good.
-RUN useradd --no-create-home --shell /usr/sbin/nologin app \
-    && chown -R app:app /srv
+# Non-root at runtime. The atlas and data baked above stay root-owned and
+# world-readable; the service only reads them (the atlas opens mode=ro). A
+# chown -R here would copy the whole atlas into a second layer.
+RUN useradd --no-create-home --shell /usr/sbin/nologin app
 USER app
 
 EXPOSE 8500

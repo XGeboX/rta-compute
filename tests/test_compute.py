@@ -191,3 +191,7 @@ def test_asof_bounds_rejected_outside_ephemeris_window():
             assert res.status_code == 422, (path, bad_asof)
         ok = client.post(path, json={**body, "asof": "2026-06-11"})
         assert ok.status_code == 200, path
+    # dasha resolves a missing asof to the birth date: the bound holds there too
+    early = {**body, "birth": {**body["birth"], "date": "1799-12-31"}}
+    assert client.post("/v1/dasha", json=early).status_code == 422
+    assert client.post("/v1/dasha", json=body).status_code == 200

@@ -6,7 +6,7 @@ persisted; responses carry the frame so every output is reproducible."""
 from datetime import date, time
 from typing import Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 Ayanamsa = Literal["TRUE_PUSHYA", "LAHIRI", "RAMAN", "KP"]
 Zodiac = Literal["sidereal", "tropical"]
@@ -51,6 +51,16 @@ class DashaRequest(BaseModel):
     ayanamsa: Ayanamsa = "TRUE_PUSHYA"
     asof: Optional[date] = Field(default=None, ge=ASOF_MIN, le=ASOF_MAX)
     depth: int = Field(default=5, ge=1, le=5)
+
+    @model_validator(mode="after")
+    def _resolved_asof_in_window(self):
+        # the route falls back to the birth date when asof is omitted, so the
+        # window has to hold for that resolved value as well, or a pre-1800
+        # birth slips past the bound the field above promises
+        if self.asof is None and not ASOF_MIN <= self.birth.date <= ASOF_MAX:
+            raise ValueError("asof defaults to the birth date, which is outside "
+                             "the ephemeris window; pass asof explicitly")
+        return self
 
 
 class SensitivityRequest(BaseModel):
