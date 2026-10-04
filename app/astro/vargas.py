@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 # This file is part of rta-compute. AGPL-3.0-or-later; see LICENSE.
-"""Divisional charts D1–D144 and the birth-time sensitivity computation.
+"""Divisional charts D1 through D144 and the birth-time sensitivity computation.
 
 Sensitivity doctrine: depth offered, honesty enforced. For any varga factor
 we compute the exact clock window around the recorded birth time within
-which the varga lagna is stable — bisected against the true ascendant, not
+which the varga lagna is stable, bisected against the true ascendant, not
 estimated from average rates. The platform shows this on every varga view;
 when the recorded birth-time precision cannot support a varga, the user
 sees it stated rather than discovering it from critics.
@@ -37,6 +37,20 @@ VARGA_NAMES = {1: "Rāśi", 2: "Horā", 3: "Drekkāṇa", 4: "Caturthāṁśa",
                144: "Dvādaśa-dvādaśāṁśa"}
 
 
+def validate_factors(factors):
+    """Validate the whole list before any factor can trigger computation."""
+    if not factors:
+        raise ValueError("factors must not be empty")
+    if len(factors) > len(VARGA_FACTORS):
+        raise ValueError(f"at most {len(VARGA_FACTORS)} factors are allowed")
+    for factor in factors:
+        if factor not in VARGA_FACTORS:
+            raise ValueError(f"unsupported varga factor {factor}")
+    if len(set(factors)) != len(factors):
+        raise ValueError("duplicate varga factors")
+    return factors
+
+
 def varga_chart(jd, place, factor):
     """One divisional chart (sidereal frame assumed pinned by caller).
 
@@ -60,7 +74,8 @@ def varga_chart(jd, place, factor):
 
 
 def all_vargas(jd, place, factors=None):
-    return [varga_chart(jd, place, f) for f in (factors or VARGA_FACTORS)]
+    factors = validate_factors(VARGA_FACTORS if factors is None else factors)
+    return [varga_chart(jd, place, f) for f in factors]
 
 
 def _varga_lagna_sign(jd, place, factor):
@@ -111,5 +126,5 @@ def lagna_sensitivity(jd, place, factor, max_window_min=30.0):
 
 def sensitivity_profile(jd, place, factors=None):
     """Sensitivity across the offered varga series for one birth moment."""
-    return [lagna_sensitivity(jd, place, f)
-            for f in (factors or VARGA_FACTORS)]
+    factors = validate_factors(VARGA_FACTORS if factors is None else factors)
+    return [lagna_sensitivity(jd, place, f) for f in factors]

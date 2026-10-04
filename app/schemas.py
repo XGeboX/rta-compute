@@ -4,13 +4,18 @@
 persisted; responses carry the frame so every output is reproducible."""
 
 from datetime import date, time
-from typing import Literal, Optional
+from typing import Annotated, Literal, Optional
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import AfterValidator, BaseModel, Field, model_validator
+
+from .astro.vargas import VARGA_FACTORS, validate_factors
 
 Ayanamsa = Literal["TRUE_PUSHYA", "LAHIRI", "RAMAN", "KP"]
 Zodiac = Literal["sidereal", "tropical"]
 HouseSystem = Literal["placidus", "whole-sign", "equal"]
+VargaFactors = Annotated[list[int],
+                         Field(min_length=1, max_length=len(VARGA_FACTORS)),
+                         AfterValidator(validate_factors)]
 
 # Swiss Ephemeris accuracy window this service relies on; an `asof` outside
 # it is rejected rather than silently computed against degraded ephemeris.
@@ -32,8 +37,9 @@ class ChartOptions(BaseModel):
     zodiac: Zodiac = "sidereal"
     ayanamsa: Ayanamsa = "TRUE_PUSHYA"
     house_system: HouseSystem = "whole-sign"  # tropical wheel honors this
-    vargas: list[int] = Field(default=[1, 9],
-                              description="divisional factors, subset of the offered series")
+    vargas: VargaFactors = Field(
+        default=[1, 9],
+        description="divisional factors, subset of the offered series")
 
 
 class ChartRequest(BaseModel):
@@ -66,7 +72,7 @@ class DashaRequest(BaseModel):
 class SensitivityRequest(BaseModel):
     birth: BirthInput
     ayanamsa: Ayanamsa = "TRUE_PUSHYA"
-    factors: Optional[list[int]] = None
+    factors: Optional[VargaFactors] = None
 
 
 class InstantRequest(BaseModel):

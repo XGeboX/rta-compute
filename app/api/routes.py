@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # This file is part of rta-compute. AGPL-3.0-or-later; see LICENSE.
-"""API routes. Sync handlers (FastAPI threadpool) — the frame lock in
+"""API routes. Sync handlers (FastAPI threadpool); the frame lock in
 astro.context serializes PyJhora's global state; run multiple uvicorn
 worker processes for parallelism. No request bodies are logged; no birth
 data is persisted."""
@@ -39,9 +39,6 @@ def healthz():
 @router.post("/chart")
 def chart(req: S.ChartRequest):
     jd, place = _jd_place(req.birth)
-    bad = [f for f in req.options.vargas if f not in V.VARGA_FACTORS]
-    if bad:
-        raise HTTPException(422, f"unsupported varga factors: {bad}")
     with C.frame(req.options.ayanamsa):
         ay = C.ayanamsa_value(jd)
         if req.options.zodiac == "tropical":
@@ -91,14 +88,10 @@ def dasha(req: S.DashaRequest):
 @router.post("/sensitivity")
 def sensitivity(req: S.SensitivityRequest):
     jd, place = _jd_place(req.birth)
-    factors = req.factors or V.VARGA_FACTORS
-    bad = [f for f in factors if f not in V.VARGA_FACTORS]
-    if bad:
-        raise HTTPException(422, f"unsupported varga factors: {bad}")
     with C.frame(req.ayanamsa):
         return {"frame": {"ayanamsa": req.ayanamsa},
                 "doctrine": "depth offered, honesty enforced",
-                "profile": V.sensitivity_profile(jd, place, factors=factors)}
+                "profile": V.sensitivity_profile(jd, place, factors=req.factors)}
 
 
 @router.post("/instant")
