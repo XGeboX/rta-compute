@@ -6,6 +6,7 @@ worker processes for parallelism. No request bodies are logged; no birth
 data is persisted."""
 
 from datetime import date as _date
+from math import isfinite
 
 from fastapi import APIRouter, HTTPException
 
@@ -33,6 +34,19 @@ def _jd_place(birth: S.BirthInput):
 
 @router.get("/healthz")
 def healthz():
+    try:
+        atlas_search.check_ready()
+    except atlas_search.AtlasUnavailable as exc:
+        raise HTTPException(503, str(exc)) from exc
+    try:
+        # A fixed epoch exercises the engine without building a chart.
+        jd = C.jd_at((2000, 1, 1), (12, 0, 0))
+        with C.frame():
+            ay = C.ayanamsa_value(jd)
+        if not isfinite(ay):
+            raise ValueError("invalid ayanamsa")
+    except Exception as exc:
+        raise HTTPException(503, "computation unavailable") from exc
     return {"ok": True, "engine": "rta-compute", "version": engine_version()}
 
 
@@ -144,7 +158,10 @@ def rectify(req: S.RectifyRequest):
 def atlas(q: str, limit: int = 8):
     if not q or len(q) < 2:
         raise HTTPException(422, "query too short")
-    return {"results": atlas_search.search(q, limit=min(limit, 20))}
+    try:
+        return {"results": atlas_search.search(q, limit=min(limit, 20))}
+    except atlas_search.AtlasUnavailable as exc:
+        raise HTTPException(503, str(exc)) from exc
 
 
 @router.get("/sky")
