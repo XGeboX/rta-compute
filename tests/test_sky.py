@@ -9,6 +9,7 @@ nothing misremembered can ship."""
 
 import json
 import math
+import os
 import sys
 from pathlib import Path
 
@@ -23,9 +24,17 @@ from app.sky.build_sky import build         # noqa: E402
 
 RAW = Path(__file__).resolve().parents[1] / "data" / "sky" / "raw"
 
+HAVE_RAW = (RAW / "hyglike_from_athyg_v33.csv.gz").exists()
+
+# The image build sets RTA_REQUIRE_SKY=1. A gate that skips ships unchecked,
+# so inside the image a missing catalog fails collection instead of skipping.
+if os.environ.get("RTA_REQUIRE_SKY") == "1" and not HAVE_RAW:
+    raise RuntimeError(
+        "RTA_REQUIRE_SKY=1 but the sky raw data is missing; "
+        "run scripts/fetch_sky_data.sh")
+
 pytestmark = pytest.mark.skipif(
-    not (RAW / "hyglike_from_athyg_v33.csv.gz").exists(),
-    reason="sky raw data not fetched (scripts/fetch_sky_data.sh)")
+    not HAVE_RAW, reason="sky raw data not fetched (scripts/fetch_sky_data.sh)")
 
 
 @pytest.fixture(scope="module")

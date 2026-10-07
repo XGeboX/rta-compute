@@ -20,6 +20,20 @@ RUN apt-get update \
     && apt-get autoremove -y \
     && rm -rf /var/lib/apt/lists/*
 
+# The sky gate needs its raw catalogs (about 15 MB; the script pins the star
+# catalog by checksum). Without them test_sky.py skipped here and the gate
+# passed unchecked. Fetched before the code is copied so a code change does
+# not refetch; curl is only needed for the fetch. The data ships with its
+# licenses (CC BY-SA and CC BY require the notice).
+COPY scripts/fetch_sky_data.sh ./scripts/fetch_sky_data.sh
+COPY data/sky/DATA-LICENSES.md ./data/sky/DATA-LICENSES.md
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl \
+    && bash scripts/fetch_sky_data.sh \
+    && apt-get purge -y curl \
+    && apt-get autoremove -y \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY app ./app
 COPY tests ./tests
 
@@ -32,7 +46,8 @@ RUN python -m app.atlas.build_atlas --data-dir /tmp/geonames \
 
 # The suite is the gate: an image that fails its golden tests must not ship.
 # The workflow test needs .github files that the image does not ship.
-RUN pip install --no-cache-dir pytest httpx && python -m pytest tests -q --ignore=tests/test_ci_gate.py
+RUN pip install --no-cache-dir pytest httpx \
+    && RTA_REQUIRE_SKY=1 python -m pytest tests -q --ignore=tests/test_ci_gate.py
 
 # Non-root at runtime. The atlas and data baked above stay root-owned and
 # world-readable; the service only reads them (the atlas opens mode=ro). A
