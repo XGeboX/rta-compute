@@ -33,7 +33,6 @@ try:
     from jhora.horoscope.chart import charts
     from jhora.horoscope.chart import ashtakavarga as jav
     from jhora import utils as jutils
-    from jhora import const as jconst
     import swisseph as swe
 finally:
     sys.stdout = _orig_stdout

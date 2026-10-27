@@ -1,7 +1,7 @@
 [project]
 name = "rta-compute"
 version = "0.1.0"
-description = "The open computational core of rta.in: sidereal and tropical chart computation, pañcāṅga, Vimśottarī to five levels, classical gochara gates, birth-time sensitivity, and the deterministic Instant rule engine. Computed, not generated."
+description = "The open computational core of rtarhythm.com: sidereal and tropical chart computation, pañcāṅga, Vimśottarī to five levels, classical gochara gates, birth-time sensitivity, and the deterministic Instant rule engine. Computed, not generated."
 license = "AGPL-3.0-or-later"
 requires-python = ">=3.12"
 dependencies = [
@@ -10,10 +10,27 @@ dependencies = [
     "PyJHora==4.6.0",
     "pyswisseph==2.10.3.2",
     "timezonefinder>=6.5",
+    # PyJHora's wheel declares no dependencies; this is its real import
+    # surface for the module tree rta-compute uses (verified clean-room).
+    # Pinned exactly per VERSIONING.md: numpy is computation-critical.
+    "numpy==2.4.2",
+    "geocoder",
+    "geopy",
+    "pytz",
+    "python-dateutil",
+    "requests",
 ]
 
 [project.optional-dependencies]
 dev = ["pytest>=8", "httpx>=0.27"]
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["app*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -15,17 +15,35 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install
-        run: |
-          pip install "fastapi>=0.115" "uvicorn[standard]>=0.30" \
-            "PyJHora==4.6.0" "pyswisseph==2.10.3.2" "timezonefinder>=6.5" \
-            pytest httpx
+        run: pip install -e ".[dev]"
+      - name: Build atlas (cities500 for test speed)
+        # The fast source keeps the test job light; the india-coverage
+        # gate self-skips on it and enforces inside the image build,
+        # which always uses allCountries.
+        run: python -m app.atlas.build_atlas --source cities500
+      - name: Fetch sky datasets (~15MB; licenses in data/sky/DATA-LICENSES.md)
+        run: bash scripts/fetch_sky_data.sh
       - name: Golden gates
         run: python -m pytest tests -q
       - name: AGPL boundary check
         # editorial prose must never enter this repo; templates live in the
         # private platform. The marker below is what platform templates use.
         run: |
-          ! grep -rn "INSTANT_TEMPLATE" app/ && echo "boundary clean"
+          grep_status=0
+          grep -rn "INSTANT_TEMPLATE" app/ || grep_status=$?
+          case "$grep_status" in
+            0)
+              echo "boundary marker found" >&2
+              exit 1
+              ;;
+            1)
+              echo "boundary clean"
+              ;;
+            *)
+              echo "boundary scan failed (grep status $grep_status)" >&2
+              exit "$grep_status"
+              ;;
+          esac
 
   docker:
     runs-on: ubuntu-latest
@@ -41,10 +59,16 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/setup-buildx-action@v3
       - uses: docker/build-push-action@v6
         with:
           context: .
           push: true
+          build-args: |
+            GIT_SHA=${{ github.sha }}
+          # Layer cache keeps the 400MB GeoNames download warm between runs.
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
           tags: |
-            ghcr.io/${{ github.repository }}:latest
-            ghcr.io/${{ github.repository }}:${{ github.sha }}
+            ghcr.io/xgebox/rta-compute:latest
+            ghcr.io/xgebox/rta-compute:${{ github.sha }}

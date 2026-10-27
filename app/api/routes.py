@@ -1,20 +1,23 @@
 #!/usr/bin/env python3
 # This file is part of rta-compute. AGPL-3.0-or-later; see LICENSE.
-"""API routes. Sync handlers (FastAPI threadpool) — the frame lock in
+"""API routes. Sync handlers (FastAPI threadpool); the frame lock in
 astro.context serializes PyJhora's global state; run multiple uvicorn
 worker processes for parallelism. No request bodies are logged; no birth
 data is persisted."""
 
 from datetime import date as _date
+from math import isfinite
 
 from fastapi import APIRouter, HTTPException
 
 from .. import schemas as S
+from ..version import engine_version
 from ..astro import context as C
 from ..astro import dasha as D
 from ..astro import gochara as G
 from ..astro import instant as I
 from ..astro import panchanga as P
+from ..astro import rectify as R
 from ..astro import vargas as V
 from ..atlas import search as atlas_search
 
@@ -31,15 +34,25 @@ def _jd_place(birth: S.BirthInput):
 
 @router.get("/healthz")
 def healthz():
-    return {"ok": True, "engine": "rta-compute"}
+    try:
+        atlas_search.check_ready()
+    except atlas_search.AtlasUnavailable as exc:
+        raise HTTPException(503, str(exc)) from exc
+    try:
+        # A fixed epoch exercises the engine without building a chart.
+        jd = C.jd_at((2000, 1, 1), (12, 0, 0))
+        with C.frame():
+            ay = C.ayanamsa_value(jd)
+        if not isfinite(ay):
+            raise ValueError("invalid ayanamsa")
+    except Exception as exc:
+        raise HTTPException(503, "computation unavailable") from exc
+    return {"ok": True, "engine": "rta-compute", "version": engine_version()}
 
 
 @router.post("/chart")
 def chart(req: S.ChartRequest):
     jd, place = _jd_place(req.birth)
-    bad = [f for f in req.options.vargas if f not in V.VARGA_FACTORS]
-    if bad:
-        raise HTTPException(422, f"unsupported varga factors: {bad}")
     with C.frame(req.options.ayanamsa):
         ay = C.ayanamsa_value(jd)
         if req.options.zodiac == "tropical":
@@ -47,6 +60,8 @@ def chart(req: S.ChartRequest):
             houses = None
             if req.options.house_system == "placidus":
                 houses = C.tropical_houses(jd, place, hsys=b"P")
+            elif req.options.house_system == "whole-sign":
+                houses = C.tropical_houses(jd, place, hsys=b"W")
             elif req.options.house_system == "equal":
                 houses = C.tropical_houses(jd, place, hsys=b"E")
             return {"frame": {"zodiac": "tropical", "ayanamsa": None,
@@ -87,14 +102,10 @@ def dasha(req: S.DashaRequest):
 @router.post("/sensitivity")
 def sensitivity(req: S.SensitivityRequest):
     jd, place = _jd_place(req.birth)
-    factors = req.factors or V.VARGA_FACTORS
-    bad = [f for f in factors if f not in V.VARGA_FACTORS]
-    if bad:
-        raise HTTPException(422, f"unsupported varga factors: {bad}")
     with C.frame(req.ayanamsa):
         return {"frame": {"ayanamsa": req.ayanamsa},
                 "doctrine": "depth offered, honesty enforced",
-                "profile": V.sensitivity_profile(jd, place, factors=factors)}
+                "profile": V.sensitivity_profile(jd, place, factors=req.factors)}
 
 
 @router.post("/instant")
@@ -106,11 +117,83 @@ def instant(req: S.InstantRequest):
         bundle = I.instant(jd, place, asof_jd, place)
         bundle["asof"] = str(asof)
         bundle["frame"] = {"ayanamsa": req.ayanamsa}
+        # Every Instant reading names the engine that produced it: any
+        # client can verify which image digest computed their result.
+        bundle["engine"] = engine_version()
         return bundle
+
+
+@router.post("/rectify/boundaries")
+def rectify_boundaries(req: S.BoundaryScanRequest):
+    """The free boundary scan: how decisive is the stated uncertainty
+    window? No events required; nothing persisted."""
+    jd, place = _jd_place(req.birth)
+    try:
+        with C.frame(req.ayanamsa):
+            return {"frame": {"ayanamsa": req.ayanamsa},
+                    **R.boundary_scan(jd, place, req.before_min,
+                                      req.after_min)}
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+
+
+@router.post("/rectify")
+def rectify(req: S.RectifyRequest):
+    """Tier-1 computational rectification sweep: candidates, boundary map,
+    daśā-at-event lords, kāraka-lens score. Verdict stays human."""
+    jd, place = _jd_place(req.birth)
+    events = [{"date": (e.date.year, e.date.month, e.date.day),
+               "type": e.type, "label": e.label} for e in req.events]
+    try:
+        with C.frame(req.ayanamsa):
+            return {"frame": {"ayanamsa": req.ayanamsa},
+                    **R.rectify_sweep(jd, place, req.before_min,
+                                      req.after_min, events,
+                                      step_min=req.step_min)}
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
 
 
 @router.get("/atlas")
 def atlas(q: str, limit: int = 8):
     if not q or len(q) < 2:
         raise HTTPException(422, "query too short")
-    return {"results": atlas_search.search(q, limit=min(limit, 20))}
+    try:
+        return {"results": atlas_search.search(q, limit=min(limit, 20))}
+    except atlas_search.AtlasUnavailable as exc:
+        raise HTTPException(503, str(exc)) from exc
+
+
+@router.get("/sky")
+def sky(t: str, ayanamsa: str = "TRUE_PUSHYA",
+        lat: float | None = None, lon: float | None = None):
+    """Live-sky frame for the Sky Atlas: grahas in equatorial-of-date,
+    tropical+sidereal readouts, arc boundaries. GET so the CDN can cache
+    by instant. No birth data, nothing persisted."""
+    from ..sky import positions as sky_positions
+    if ayanamsa not in C.AYANAMSAS:
+        raise HTTPException(422, f"unsupported ayanamsa: {ayanamsa}")
+    if (lat is None) != (lon is None):
+        raise HTTPException(422, "lat and lon arrive together or not at all")
+    if lat is not None and not (-90 <= lat <= 90 and -180 <= lon <= 180):
+        raise HTTPException(422, "lat/lon out of range")
+    # Strict UTC only: a "+05:30" suffix silently treated as UTC would
+    # compute a sky hours off. Trailing 'Z' is the one accepted marker.
+    body_t = t[:-1] if t.endswith("Z") else t
+    if len(body_t) not in (16, 19):
+        raise HTTPException(
+            422, "t must be ISO UTC: YYYY-MM-DDTHH:MM[:SS][Z]")
+    try:
+        y, mo, d = int(body_t[0:4]), int(body_t[5:7]), int(body_t[8:10])
+        if body_t[4] != "-" or body_t[7] != "-" or body_t[10] != "T":
+            raise ValueError("separators")
+        h, mi = int(body_t[11:13]), int(body_t[14:16])
+        s = int(body_t[17:19]) if len(body_t) == 19 else 0
+    except (ValueError, IndexError) as exc:
+        raise HTTPException(422, "t must be ISO UTC: YYYY-MM-DDTHH:MM[:SS][Z]") \
+            from exc
+    jd = C.jd_at((y, mo, d), (h, mi, s))
+    with C.frame(ayanamsa):
+        out = sky_positions.sky_at(jd, ayanamsa, lat=lat, lon=lon)
+    out["t"] = t
+    return out
