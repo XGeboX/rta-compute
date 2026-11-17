@@ -2,7 +2,7 @@
 # This file is part of rta-compute. AGPL-3.0-or-later; see LICENSE.
 """RTA Instant: the deterministic rule engine.
 
-Computed, not generated. This module returns FACTS and FIRED RULES with
+This module returns FACTS and FIRED RULES with
 citations — pure JSON, byte-identical for identical input. It contains no
 prose: editorial rendering happens client-side of the AGPL boundary. Every
 rule carries its classical source so any output can be audited against
@@ -126,7 +126,7 @@ def instant(birth_jd, birth_place, asof_jd, asof_place):
     fired.sort(key=lambda r: (-r["weight"], r["rule_id"],
                               str(sorted(r["slots"].items()))))
     return {
-        "doctrine": "computed-not-generated",
+        "doctrine": "deterministic-cited-rules",
         "facts": _facts(natal),
         "dasha_stack": stack,
         "gates": {g: {"carried": row["gates_carried"],

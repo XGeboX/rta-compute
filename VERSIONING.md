@@ -13,7 +13,7 @@ Every running instance states its own identity:
   built from (`sha`), and the **installed** versions of PyJHora and
   pyswisseph, read from package metadata at runtime, never hand-claimed.
 - Every `/v1/instant` response carries the same block under `engine`, so any
-  reading can be traced to the exact engine that computed it.
+  reading can be traced to the exact engine that derived it.
 
 ## Why the determinism holds
 
@@ -39,9 +39,10 @@ files, numpy) requires, in one reviewed PR:
 4. A note in this file's history section naming the bump and its effect.
 
 Non-computation dependencies (FastAPI, uvicorn) follow normal review; they
-cannot affect computed values, and the golden gates prove it.
+cannot affect derived values, and the golden gates prove it.
 
 ## History
 
+- 2026-11-17: the `doctrine` value changed from the retired tagline to `deterministic-cited-rules`; no derived number changed.
 - 2026-06-12: contract stated; version echo added to /healthz and Instant
   responses; `GIT_SHA` baked at image build.

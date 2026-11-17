@@ -138,7 +138,7 @@ def boundary_scan(jd_center, place, before_min, after_min,
 
 
 class _CandidateDasha:
-    """One candidate birth time's daśā tree, computed once and queried for
+    """One candidate birth time's daśā tree, derived once and queried for
     every event: the native L1 list is built a single time and L2 bhukti
     lists are memoized per mahā lord, so an N-event request costs one L1
     computation plus at most a handful of L2 expansions per candidate
@@ -215,7 +215,7 @@ def rectify_sweep(jd_center, place, before_min, after_min, events,
         t += step_min
     scan = boundary_scan(jd_center, place, before_min, after_min, factors)
     return {
-        "doctrine": ("computed-not-generated; the kāraka score is one "
+        "doctrine": ("deterministic-cited-rules; the kāraka score is one "
                      "classical lens, not a verdict - final rectification "
                      "is a human judgment over these facts"),
         "method": "PVR multi-varga rectification (sweep + boundary map + "

@@ -118,7 +118,7 @@ def instant(req: S.InstantRequest):
         bundle["asof"] = str(asof)
         bundle["frame"] = {"ayanamsa": req.ayanamsa}
         # Every Instant reading names the engine that produced it: any
-        # client can verify which image digest computed their result.
+        # client can verify which image digest derived their result.
         bundle["engine"] = engine_version()
         return bundle
 
