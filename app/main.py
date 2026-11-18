@@ -12,7 +12,7 @@
 # General Public License for more details: LICENSE.
 """rta-compute: the open computational core of rtarhythm.com.
 
-Computed, not generated. Sidereal and tropical chart computation, pañcāṅga,
+Sidereal and tropical chart computation, pañcāṅga,
 five-level Vimśottarī, classical gochara gates, birth-time sensitivity, and
 the deterministic Instant rule engine, all auditable against this source.
 
@@ -32,7 +32,7 @@ SOURCE_URL = os.environ.get(
 
 app = FastAPI(
     title="rta-compute",
-    summary="The open computational core of rtarhythm.com, computed, not generated.",
+    summary="The open computational core of rtarhythm.com",
     version="0.1.0",
     license_info={"name": "AGPL-3.0-or-later",
                   "url": "https://www.gnu.org/licenses/agpl-3.0.html"},

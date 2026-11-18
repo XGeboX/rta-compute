@@ -6,9 +6,13 @@ on:
     branches: [main]
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -21,8 +25,23 @@ jobs:
         # gate self-skips on it and enforces inside the image build,
         # which always uses allCountries.
         run: python -m app.atlas.build_atlas --source cities500
+      # One outside server being down failed every run on 17-11-2026.
+      # All three files are pinned and re-verified on every run, restored
+      # or fresh; the cache keeps a server outage from blocking the tests.
+      - name: Restore sky datasets
+        id: sky-cache
+        uses: actions/cache/restore@v6
+        with:
+          path: data/sky/raw
+          key: sky-raw-${{ hashFiles('scripts/fetch_sky_data.sh') }}
       - name: Fetch sky datasets (~15MB; licenses in data/sky/DATA-LICENSES.md)
         run: bash scripts/fetch_sky_data.sh
+      - name: Save sky datasets
+        if: github.ref == 'refs/heads/main' && steps.sky-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: data/sky/raw
+          key: ${{ steps.sky-cache.outputs.cache-primary-key }}
       - name: Golden gates
         run: python -m pytest tests -q
       - name: AGPL boundary check

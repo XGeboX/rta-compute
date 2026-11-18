@@ -139,7 +139,7 @@ def test_instant_deterministic():
     with C.frame("TRUE_PUSHYA"):
         b = I.instant(JD, PLACE, asof, PLACE)
     assert a == b
-    assert a["doctrine"] == "computed-not-generated"
+    assert a["doctrine"] == "deterministic-cited-rules"
     assert a["citations_complete"] is True
     assert all(r["citation"]["source"] for r in a["fired_rules"])
     assert len(a["dasha_stack"]) == 5

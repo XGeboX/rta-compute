@@ -18,7 +18,7 @@ VargaFactors = Annotated[list[int],
                          AfterValidator(validate_factors)]
 
 # Swiss Ephemeris accuracy window this service relies on; an `asof` outside
-# it is rejected rather than silently computed against degraded ephemeris.
+# it is rejected rather than silently derived against degraded ephemeris.
 ASOF_MIN = date(1800, 1, 1)
 ASOF_MAX = date(2200, 12, 31)
 

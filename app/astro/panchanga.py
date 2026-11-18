@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # This file is part of rta-compute. AGPL-3.0-or-later; see LICENSE.
 """Pañcāṅga at a moment: tithi, nakṣatra, yoga, karaṇa, vāra, with sunrise
-and sunset. Computed via PyJhora's drik layer in the pinned frame."""
+and sunset via PyJhora's drik layer in the pinned frame."""
 
 import datetime
 import io

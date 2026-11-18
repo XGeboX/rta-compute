@@ -155,7 +155,7 @@ def tropical_houses(jd, place, hsys=b"P"):
 
 
 def natal_bundle(jd, place):
-    """Everything the gates/instant layers need, computed fresh per request
+    """Everything the gates/instant layers need, fresh per request
     (sidereal frame assumed pinned by caller). No persistence."""
     pos = positions_at(jd, place, zodiac="sidereal")
     raw = charts.divisional_chart(jd, place, divisional_chart_factor=1)

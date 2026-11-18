@@ -2,7 +2,7 @@
 
 The open computational core of [rtarhythm.com](https://rtarhythm.com).
 
-**Computed, not generated.** Every number this service returns is a
+Every number this service returns is a
 deterministic computation against the Swiss Ephemeris under classical
 jyotiṣa rules, with the rule sources cited in the output. No language
 models are involved anywhere in this codebase. Identical input produces

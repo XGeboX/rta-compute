@@ -8,7 +8,7 @@ anything.
 
 ## The doctrine
 
-**Computed, not generated.** Every number this service returns is a
+Every number this service returns is a
 deterministic computation against the Swiss Ephemeris under classical
 rules. No language model produces, paraphrases, or "improves" any output
 or any astrological claim in this repository, and none ever will.

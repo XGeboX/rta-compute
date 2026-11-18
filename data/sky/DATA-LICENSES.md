@@ -12,6 +12,8 @@ committed).
 | IAU constellation stick figures | `constellation_lines_iau.dat` | CC BY 4.0 | IAU and Sky & Telescope magazine (Roger Sinnott & Rick Fienberg); machine-readable figures: Dominic Ford (dcf21/constellation-stick-figures). |
 | Constellation boundaries (J2000) | `bound_20.dat` | CDS/VizieR usage terms, cited | Davenhall A.C., Leggett S.K. 1989, VizieR VI/49; VizieR catalogue access tool, CDS, Strasbourg (DOI 10.26093/cds/vizier). |
 
+The VI/49 file may be fetched from CDS or the VizieR mirror at CfA Harvard: the same catalogue and, by the pinned checksum, the same bytes.
+
 The yogatara identifications in `app/sky/asterisms.py` are traditional;
 each entry is cross-checked at test time against the Swiss Ephemeris
 fixed-star registry (sefstars), which encodes the classical names. The
