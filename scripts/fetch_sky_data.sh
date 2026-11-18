@@ -7,38 +7,100 @@ set -euo pipefail
 RAW="${SKY_RAW_DIR:-$(cd "$(dirname "$0")/.." && pwd)/data/sky/raw}"
 mkdir -p "$RAW"
 
+# Without a hasher no file can be judged. Stopping here keeps a good file
+# from being moved aside and every server from being blamed for a mismatch.
+if command -v sha256sum >/dev/null; then
+  hasher=(sha256sum)
+elif command -v shasum >/dev/null; then
+  hasher=(shasum -a 256)
+else
+  echo "hashing failed: neither sha256sum nor shasum was found" >&2
+  exit 1
+fi
+
+# The file goes in on standard input so that no path reaches the hasher's
+# output: GNU sha256sum marks its line when a path holds a backslash or a
+# newline. A digest that cannot be taken says nothing about the file, so
+# callers stop on it and never read it as a mismatch.
 sha256_of() {
-  if command -v sha256sum >/dev/null; then
-    sha256sum "$1" | cut -d' ' -f1
-  else
-    shasum -a 256 "$1" | cut -d' ' -f1
+  local line
+  if ! line="$("${hasher[@]}" < "$1")"; then
+    echo "hashing failed for $1" >&2
+    return 1
   fi
+  echo "${line%% *}"
 }
 
-# fetch <file> <pin> <gzip|raw> <byte-cap> <space-separated-sources>
+# BSD wc pads its count with spaces, which a message must not carry.
+size_of() {
+  wc -c < "$1" | tr -d ' '
+}
+
+# fetch <file> <pin> <gzip|raw> <byte-cap> <whitespace-separated-sources>
 # Cache entries and fresh transfers earn the final name by the same pin.
 # A server returning the wrong bytes must not prevent a good mirror winning.
 fetch() {
   local out="$1" pin="$2" format="$3" cap="$4" url candidate failure
   local final="$RAW/$out" part="$RAW/$out.part" unpacked="$RAW/$out.unpacked.part"
-  local -a sources
-  IFS=' ' read -r -a sources <<< "$5"
+  local path seen reason left newline=$'\n'
+  local -a sources transfer
+  # A list may span lines, so read runs to its end; with no NUL to stop at it
+  # then reports the end of input, which is not a failure.
+  IFS=$' \t\n' read -r -d '' -a sources <<< "$5" || true
+  # rm -f stops the script on a directory with rm's words and no reason, and
+  # a directory in the store is not this script's to delete.
+  for path in "$final" "$part" "$unpacked"; do
+    if [ -e "$path" ] && [ ! -f "$path" ]; then
+      echo "$path is not a regular file; remove it and run again" >&2
+      exit 1
+    fi
+  done
   rm -f "$part" "$unpacked"
   if [ -e "$final" ]; then
-    if [ "$(sha256_of "$final")" = "$pin" ]; then
+    seen="$(sha256_of "$final")" || exit 1
+    if [ "$seen" = "$pin" ]; then
       echo "have $out"
       return
     fi
     mv -f "$final" "$final.bad"
-    echo "$out checksum mismatch; moved to $out.bad" >&2
+    echo "$out checksum mismatch (sha256 $seen, $(size_of "$final.bad") bytes);" \
+         "moved to $out.bad" >&2
+    # A restored cache is saved again only after a miss, so a bad entry is
+    # healed on every run and never replaced while the step stays green.
+    if [ "${GITHUB_ACTIONS:-}" = "true" ]; then
+      echo "::warning::the restored cache holds a bad copy of $out;" \
+           "delete the cache entry so a verified copy is saved"
+    fi
   fi
-  for url in "${sources[@]:-}"; do
+  if [ "${#sources[@]}" -eq 0 ]; then
+    echo "no sources for $out" >&2
+    exit 1
+  fi
+  left="${#sources[@]}"
+  for url in "${sources[@]}"; do
+    left="$((left - 1))"
     echo "fetching $out from $url"
     failure=""
     candidate="$part"
-    if ! curl -fsSL --connect-timeout 20 --max-time 180 --retry 2 \
-        --max-filesize "$cap" -o "$part" "$url" 2>/dev/null; then
-      failure="curl failed (transfer or size cap)"
+    # A stall rule ends a source that connects and then goes quiet, so the
+    # total limit can be loose enough for the 15 MB archive on a slow line.
+    transfer=(-fsSL --connect-timeout 20 --speed-limit 1024 --speed-time 30
+              --max-time 600 --max-filesize "$cap")
+    # A retry spent while a mirror waits only delays the mirror.
+    if [ "$left" -eq 0 ]; then
+      transfer+=(--retry 2 --retry-max-time 120)
+    fi
+    # A transfer reported good may leave no file; an empty one fails its pin
+    # like any other wrong answer, so the next source is still asked.
+    : > "$part"
+    # After --url an entry that begins with a dash cannot be taken for an option.
+    if ! reason="$(curl "${transfer[@]}" -o "$part" --url "$url" 2>&1)"; then
+      # A reason may span lines, and the log keeps one line per failed source.
+      failure="curl failed (transfer or size cap): ${reason//$newline/ }"
+    elif [ "$(wc -c < "$part")" -gt "$cap" ]; then
+      # --max-filesize refuses up front only a declared length, and older
+      # curl lets a body of no declared length run past it.
+      failure="transfer size cap exceeded"
     elif [ "$format" = "gzip" ]; then
       candidate="$unpacked"
       # The extra byte distinguishes a file at the cap from a clipped stream;
@@ -50,12 +112,13 @@ fetch() {
       fi
     fi
     if [ -z "$failure" ]; then
-      if [ "$(sha256_of "$candidate")" = "$pin" ]; then
+      seen="$(sha256_of "$candidate")" || exit 1
+      if [ "$seen" = "$pin" ]; then
         mv "$candidate" "$final"
         rm -f "$part" "$unpacked"
         return
       fi
-      failure="checksum mismatch"
+      failure="checksum mismatch (sha256 $seen, $(size_of "$candidate") bytes)"
     fi
     rm -f "$part" "$unpacked"
     echo "$out source $url failed: $failure" >&2
